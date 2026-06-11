@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CatalogAI — AI Sales Assistant</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0e1a;--s:#111827;--s2:#1a2235;--b:rgba(255,255,255,0.08);--a:#00d4aa;--a2:#0099ff;--t:#f0f4ff;--m:#8892a4;--r:10px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,212,170,0.07) 0%,transparent 50%),radial-gradient(ellipse at 85% 85%,rgba(0,153,255,0.07) 0%,transparent 50%);pointer-events:none;z-index:0}
+header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--b);background:rgba(10,14,26,0.95);backdrop-filter:blur(12px);flex-wrap:wrap;gap:8px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px}
+.logo span{background:linear-gradient(135deg,var(--a),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo small{font-size:10px;color:var(--m);font-weight:400;margin-left:8px;letter-spacing:1px;text-transform:uppercase;-webkit-text-fill-color:var(--m)}
+.lang-bar{display:flex;gap:5px;flex-wrap:wrap}
+.lb{padding:4px 10px;border-radius:16px;border:1px solid var(--b);background:transparent;color:var(--m);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s}
+.lb.active,.lb:hover{border-color:var(--a);color:var(--a);background:rgba(0,212,170,0.08)}
+.status-bar{position:relative;z-index:10;display:flex;align-items:center;gap:7px;padding:8px 20px;background:rgba(0,212,170,0.05);border-bottom:1px solid rgba(0,212,170,0.12);font-size:12px;color:var(--a);flex-shrink:0}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--a);animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+main{position:relative;z-index:10;display:grid;grid-template-columns:280px 1fr;flex:1;min-height:0;height:calc(100vh - 88px)}
+.side{border-right:1px solid var(--b);padding:14px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:rgba(17,24,39,0.5);flex-shrink:0}
+.side::-webkit-scrollbar{width:3px}
+.side::-webkit-scrollbar-thumb{background:var(--b);border-radius:2px}
+.side h3{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--m);margin-bottom:8px;font-weight:600}
+.upload-zone{border:1.5px dashed rgba(0,212,170,0.3);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:all 0.3s;background:rgba(0,212,170,0.03);position:relative}
+.upload-zone:hover{border-color:var(--a);background:rgba(0,212,170,0.08)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.upload-zone .ui{font-size:20px;margin-bottom:5px}
+.upload-zone strong{font-size:11px;color:var(--a);display:block;margin-bottom:2px}
+.upload-zone p{font-size:10px;color:var(--m)}
+.cat-loaded{background:var(--s2);border:1px solid rgba(0,212,170,0.2);border-radius:var(--r);padding:9px 11px}
+.cat-name{font-size:11px;font-weight:600;color:var(--a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-info{font-size:10px;color:var(--m);margin-top:2px}
+.qbtns{display:flex;flex-direction:column;gap:5px}
+.qb{background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:7px 9px;font-size:11px;color:var(--m);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:all 0.2s;line-height:1.4}
+.qb:hover{border-color:var(--a2);color:var(--t)}
+.leads-box{background:var(--s2);border:1px solid var(--b);border-radius:var(--r);padding:10px 12px}
+.leads-n{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--a);line-height:1}
+.leads-l{font-size:10px;color:var(--m);margin-bottom:8px}
+.btn-dl{width:100%;padding:7px;border-radius:7px;border:1px solid var(--a);background:rgba(0,212,170,0.08);color:var(--a);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s}
+.btn-dl:hover{background:rgba(0,212,170,0.18)}
+.chat{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+.msgs{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.msgs::-webkit-scrollbar{width:3px}
+.msgs::-webkit-scrollbar-thumb{background:var(--b);border-radius:2px}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:100%;padding:20px;animation:fi 0.5s ease}
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.wi{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,rgba(0,212,170,0.2),rgba(0,153,255,0.2));border:1px solid rgba(0,212,170,0.3);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.welcome h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:7px;background:linear-gradient(135deg,var(--t),var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.welcome p{color:var(--m);font-size:12px;line-height:1.6;max-width:300px}
+.msg{display:flex;gap:8px;animation:mi 0.3s ease;max-width:88%}
+@keyframes mi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.msg.u{align-self:flex-end;flex-direction:row-reverse}
+.msg.b{align-self:flex-start}
+.av{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.msg.b .av{background:linear-gradient(135deg,rgba(0,212,170,0.2),rgba(0,153,255,0.2));border:1px solid rgba(0,212,170,0.3)}
+.msg.u .av{background:var(--s2);border:1px solid var(--b)}
+.bub{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.6}
+.msg.b .bub{background:var(--s2);border:1px solid var(--b);border-top-left-radius:3px}
+.msg.u .bub{background:linear-gradient(135deg,rgba(0,212,170,0.12),rgba(0,153,255,0.12));border:1px solid rgba(0,212,170,0.2);border-top-right-radius:3px}
+.ty{display:flex;gap:4px;padding:10px 14px;align-items:center}
+.ty span{width:6px;height:6px;border-radius:50%;background:var(--a);animation:b 1.2s infinite}
+.ty span:nth-child(2){animation-delay:0.2s}.ty span:nth-child(3){animation-delay:0.4s}
+@keyframes b{0%,60%,100%{transform:translateY(0);opacity:0.3}30%{transform:translateY(-6px);opacity:1}}
+.lf{background:var(--s);border:1px solid rgba(0,212,170,0.25);border-radius:var(--r);padding:13px;margin-top:5px;width:100%}
+.lf h4{font-family:'Syne',sans-serif;font-size:12px;color:var(--a);margin-bottom:9px}
+.lf input{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--t);font-family:'DM Sans',sans-serif;margin-bottom:6px;outline:none;transition:border-color 0.2s}
+.lf input:focus{border-color:var(--a)}
+.lfb{display:flex;gap:6px}
+.bs{flex:1;padding:8px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--a),var(--a2));color:#0a0e1a;font-weight:700;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.bc{padding:8px 12px;border-radius:7px;border:1px solid var(--b);background:transparent;color:var(--m);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer}
+.qf{background:var(--s);border:1px solid rgba(0,153,255,0.25);border-radius:var(--r);padding:13px;width:100%}
+.qf h4{font-family:'Syne',sans-serif;font-size:12px;color:var(--a2);margin-bottom:4px}
+.qf p{font-size:10px;color:var(--m);margin-bottom:9px}
+.qf input,.qf select,.qf textarea{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--t);font-family:'DM Sans',sans-serif;margin-bottom:6px;outline:none;transition:border-color 0.2s}
+.qf textarea{resize:none;height:48px}
+.kpr{background:var(--s2);border:1px solid rgba(0,212,170,0.2);border-radius:8px;padding:11px;margin-top:7px;font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:180px;overflow-y:auto}
+.btn-cp{width:100%;padding:7px;border-radius:7px;border:1px solid var(--a2);background:rgba(0,153,255,0.1);color:var(--a2);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:6px}
+.ibar{padding:11px 16px;border-top:1px solid var(--b);background:rgba(17,24,39,0.95);flex-shrink:0}
+.ir{display:flex;gap:8px;align-items:flex-end;margin-bottom:8px}
+.ir textarea{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--t);font-family:'DM Sans',sans-serif;resize:none;height:42px;outline:none;transition:border-color 0.2s}
+.ir textarea:focus{border-color:var(--a)}
+.ir textarea::placeholder{color:var(--m)}
+.bsnd{width:42px;height:42px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--a),var(--a2));cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s}
+.bsnd:hover{transform:scale(1.05)}
+.bsnd:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.bsnd svg{width:17px;height:17px;fill:#0a0e1a}
+.bqrow{display:flex;justify-content:space-between;align-items:center}
+.btn-quote{padding:6px 14px;border-radius:16px;border:1px solid rgba(0,153,255,0.4);background:rgba(0,153,255,0.08);color:var(--a2);font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s}
+.btn-quote:hover{background:rgba(0,153,255,0.15)}
+.hint{font-size:11px;color:var(--m)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--b);border-top-color:var(--a);animation:spin 0.8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc{display:flex;align-items:center;gap:8px;padding:10px;background:var(--s2);border:1px solid var(--b);border-radius:var(--r);font-size:12px;color:var(--m)}
+.toast{position:fixed;bottom:16px;right:16px;background:var(--s);border:1px solid rgba(0,212,170,0.3);border-radius:var(--r);padding:9px 14px;font-size:12px;color:var(--a);z-index:100;animation:ti 0.3s ease}
+@keyframes ti{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:768px){
+  main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:calc(100vh - 88px)}
+  .side{border-right:none;border-bottom:1px solid var(--b);max-height:45vh;flex-direction:row;flex-wrap:wrap;gap:10px;overflow-x:hidden}
+  .side>div{min-width:140px;flex:1}
+  .chat{min-height:55vh}
+  header{padding:10px 14px}
+  .logo small{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Catalog<span>AI</span><small>by Fuels24</small></div>
+  <div class="lang-bar">
+    <button class="lb active" onclick="setLang('en')">EN</button>
+    <button class="lb" onclick="setLang('th')">ไทย</button>
+    <button class="lb" onclick="setLang('ja')">日本語</button>
+    <button class="lb" onclick="setLang('ko')">한국어</button>
+    <button class="lb" onclick="setLang('zh')">中文</button>
+    <button class="lb" onclick="setLang('ru')">РУС</button>
+  </div>
+</header>
+
+<div class="status-bar">
+  <div class="sdot"></div>
+  <span id="statusTxt">AI Assistant ready — Demo catalog loaded</span>
+</div>
+
+<main>
+  <aside class="side">
+    <div>
+      <h3 id="lblCat">Product Catalog</h3>
+      <div class="upload-zone" id="upZone">
+        <input type="file" accept=".pdf" id="fileIn" onchange="handlePDF(this)">
+        <div class="ui">📄</div>
+        <strong id="lblUp">Upload PDF Catalog</strong>
+        <p id="lblUpHint">Drag & drop or click</p>
+      </div>
+      <div class="cat-loaded" id="catLoaded" style="margin-top:8px">
+        <div class="cat-name">📦 TechPro Industrial (Demo)</div>
+        <div class="cat-info" id="catInfo">Pumps · Valves · Heat Exchangers</div>
+      </div>
+    </div>
+    <div>
+      <h3 id="lblEx">Example Questions</h3>
+      <div class="qbtns" id="qbtns">
+        <button class="qb" onclick="askQ(this)">What pumps do you have?</button>
+        <button class="qb" onclick="askQ(this)">Compare HP-200 and HP-500</button>
+        <button class="qb" onclick="askQ(this)">Pump for 300 bar pressure?</button>
+        <button class="qb" onclick="askQ(this)">Price range?</button>
+        <button class="qb" onclick="askQ(this)">Warranty terms?</button>
+      </div>
+    </div>
+    <div>
+      <h3 id="lblLeads">Leads Collected</h3>
+      <div class="leads-box">
+        <div class="leads-n" id="leadsN">0</div>
+        <div class="leads-l" id="lblLeadsL">contacts</div>
+        <button class="btn-dl" onclick="dlLeads()">⬇ Download CSV</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="chat">
+    <div class="msgs" id="msgs">
+      <div class="welcome" id="wlc">
+        <div class="wi">🤖</div>
+        <h2 id="wTitle">Your AI Sales Assistant</h2>
+        <p id="wText">Ask me anything about our products — specs, prices, comparisons. I answer in any language, instantly.</p>
+      </div>
+    </div>
+    <div class="ibar">
+      <div class="ir">
+        <textarea id="inp" placeholder="Ask about any product..." onkeydown="hk(event)" oninput="ar(this)"></textarea>
+        <button class="bsnd" id="sbtn" onclick="send()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="bqrow">
+        <button class="btn-quote" onclick="showQuote()">📋 <span id="lblQuote">Request a Quote</span></button>
+        <span class="hint" id="hintTxt">Demo mode — upload your catalog to customize</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const DEMO=`TECHPRO INDUSTRIAL EQUIPMENT CATALOG 2026
+
+PUMPS:
+HP-100: 100 bar, 100 L/min, 0-80°C, cast iron, 4kW, $2,200. Best for light industrial use.
+HP-200: 200 bar, 50 L/min, -20 to 120°C, stainless steel 316L, 7.5kW, $4,500. Most popular model.
+HP-500: 500 bar, 30 L/min, -40 to 180°C, Duplex steel, 15kW, $12,000. Heavy duty, extreme conditions.
+
+VALVES:
+V-GATE-2: Gate valve DN50 PN40, -196 to 425°C, carbon steel, $380
+V-BALL-3: Ball valve DN80 PN63, full bore, API 608, stainless steel, $650
+V-CHECK-1: Check valve DN100 PN16, wafer type, $210
+
+HEAT EXCHANGERS:
+HE-SHELL-1: Shell & tube, 25m2, max 350°C/40 bar, $18,000
+HE-PLATE-1: Plate type, 12m2, max 180°C, AISI 316L plates, $8,500
+
+WARRANTY: 24 months on all products. Spare parts available worldwide.
+DELIVERY: Standard 4-8 weeks. Express 2 weeks available.
+CONTACT: sales@techpro.com | +66 2 XXX XXXX`;
+
+const TR={
+  en:{status:'AI Assistant ready — Demo catalog loaded',lblCat:'Product Catalog',lblUp:'Upload PDF Catalog',lblUpHint:'Drag & drop or click',lblEx:'Example Questions',lblLeads:'Leads Collected',lblLeadsL:'contacts',wTitle:'Your AI Sales Assistant',wText:'Ask me anything about our products — specs, prices, comparisons. I answer in any language, instantly.',qs:['What pumps do you have?','Compare HP-200 and HP-500','Pump for 300 bar pressure?','Price range?','Warranty terms?'],ph:'Ask about any product...',hint:'Demo mode — upload your catalog to customize',lblQuote:'Request a Quote',noAns:"I don't have that information in the catalog. Please leave your contact and our engineer will answer within 24h.",lfTitle:'📬 Leave your contact',fName:'Your name',fEmail:'Email *',fCo:'Company',fInt:'What are you looking for?',btnSend:'Send',btnCancel:'Cancel',ok:'✅ Thank you! We will contact you within 24 hours.',qfTitle:'📋 Request a Quote',qfSub:'AI will generate a personalised proposal',fLang:'Proposal language',fType:'Email type',fSender:'Your company & product',btnGen:'⚡ Generate',btnRegen:'⚡ Regenerate',generating:'Generating proposal...',btnCopy:'📋 Copy Proposal',copied:'✅ Copied!'},
+  th:{status:'AI พร้อมใช้งาน',lblCat:'แคตาล็อกสินค้า',lblUp:'อัปโหลด PDF',lblUpHint:'ลากและวางหรือคลิก',lblEx:'ตัวอย่างคำถาม',lblLeads:'ลีดที่รวบรวม',lblLeadsL:'ผู้ติดต่อ',wTitle:'ผู้ช่วยขายสินค้า AI',wText:'ถามฉันเกี่ยวกับผลิตภัณฑ์ของเรา',qs:['มีปั๊มอะไรบ้าง?','เปรียบเทียบ HP-200 และ HP-500','ปั๊มสำหรับ 300 บาร์?','ช่วงราคา?','เงื่อนไขการรับประกัน?'],ph:'ถามเกี่ยวกับสินค้า...',hint:'โหมดสาธิต',lblQuote:'ขอใบเสนอราคา',noAns:'ฉันไม่มีข้อมูลนั้นในแคตาล็อก กรุณาทิ้งข้อมูลติดต่อ',lfTitle:'📬 ทิ้งข้อมูลติดต่อ',fName:'ชื่อ',fEmail:'อีเมล *',fCo:'บริษัท',fInt:'สนใจอะไร?',btnSend:'ส่ง',btnCancel:'ยกเลิก',ok:'✅ ขอบคุณ! เราจะติดต่อกลับ',qfTitle:'📋 ขอใบเสนอราคา',qfSub:'AI จะสร้างใบเสนอราคาส่วนตัว',fLang:'ภาษาใบเสนอราคา',fType:'ประเภทอีเมล',fSender:'บริษัทและผลิตภัณฑ์ของคุณ',btnGen:'⚡ สร้าง',btnRegen:'⚡ สร้างใหม่',generating:'กำลังสร้างใบเสนอราคา...',btnCopy:'📋 คัดลอก',copied:'✅ คัดลอกแล้ว!'},
+  ja:{status:'AIアシスタント準備完了',lblCat:'製品カタログ',lblUp:'PDFをアップロード',lblUpHint:'ドラッグ＆ドロップ',lblEx:'質問例',lblLeads:'収集リード',lblLeadsL:'件',wTitle:'AI販売アシスタント',wText:'製品についてお気軽にお問い合わせください',qs:['どのようなポンプがありますか?','HP-200とHP-500の比較','300バール対応ポンプ?','価格帯?','保証条件?'],ph:'製品について質問する...',hint:'デモモード',lblQuote:'見積もり依頼',noAns:'カタログにその情報がありません。連絡先をお残しください',lfTitle:'📬 連絡先を残す',fName:'お名前',fEmail:'メール *',fCo:'会社名',fInt:'ご興味の製品',btnSend:'送信',btnCancel:'キャンセル',ok:'✅ ありがとうございます！24時間以内にご連絡します',qfTitle:'📋 見積もり依頼',qfSub:'AIが個別提案書を作成します',fLang:'提案書の言語',fType:'メールタイプ',fSender:'御社と製品',btnGen:'⚡ 生成',btnRegen:'⚡ 再生成',generating:'提案書を生成中...',btnCopy:'📋 コピー',copied:'✅ コピーしました！'},
+  ko:{status:'AI 어시스턴트 준비 완료',lblCat:'제품 카탈로그',lblUp:'PDF 업로드',lblUpHint:'드래그 앤 드롭',lblEx:'질문 예시',lblLeads:'수집된 리드',lblLeadsL:'연락처',wTitle:'AI 영업 어시스턴트',wText:'제품에 대해 무엇이든 물어보세요',qs:['어떤 펌프가 있나요?','HP-200과 HP-500 비교','300바 압력용 펌프?','가격대?','보증 조건?'],ph:'제품에 대해 질문하세요...',hint:'데모 모드',lblQuote:'견적 요청',noAns:'카탈로그에 해당 정보가 없습니다. 연락처를 남겨주세요',lfTitle:'📬 연락처 남기기',fName:'이름',fEmail:'이메일 *',fCo:'회사명',fInt:'관심 제품',btnSend:'전송',btnCancel:'취소',ok:'✅ 감사합니다! 24시간 이내에 연락드리겠습니다',qfTitle:'📋 견적 요청',qfSub:'AI가 맞춤 제안서를 생성합니다',fLang:'제안서 언어',fType:'이메일 유형',fSender:'귀사 및 제품',btnGen:'⚡ 생성',btnRegen:'⚡ 재생성',generating:'제안서 생성 중...',btnCopy:'📋 복사',copied:'✅ 복사되었습니다!'},
+  zh:{status:'AI助手就绪',lblCat:'产品目录',lblUp:'上传PDF目录',lblUpHint:'拖放或点击',lblEx:'示例问题',lblLeads:'收集的线索',lblLeadsL:'联系人',wTitle:'AI销售助手',wText:'询问我们的任何产品',qs:['您有哪些泵?','比较HP-200和HP-500','300巴压力泵?','价格范围?','保修条款?'],ph:'询问任何产品...',hint:'演示模式',lblQuote:'请求报价',noAns:'目录中没有该信息。请留下您的联系方式',lfTitle:'📬 留下联系方式',fName:'姓名',fEmail:'电子邮件 *',fCo:'公司',fInt:'感兴趣的产品',btnSend:'发送',btnCancel:'取消',ok:'✅ 谢谢！我们将在24小时内联系您',qfTitle:'📋 请求报价',qfSub:'AI将生成个性化方案',fLang:'方案语言',fType:'邮件类型',fSender:'贵公司及产品',btnGen:'⚡ 生成',btnRegen:'⚡ 重新生成',generating:'正在生成方案...',btnCopy:'📋 复制',copied:'✅ 已复制！'},
+  ru:{status:'AI-ассистент готов',lblCat:'Каталог продуктов',lblUp:'Загрузить PDF каталог',lblUpHint:'Перетащите или нажмите',lblEx:'Примеры вопросов',lblLeads:'Собранные лиды',lblLeadsL:'контактов',wTitle:'Ваш AI-ассистент по продажам',wText:'Задайте любой вопрос о наших продуктах — характеристики, цены, сравнения',qs:['Какие насосы у вас есть?','Сравните HP-200 и HP-500','Насос для 300 бар?','Ценовой диапазон?','Условия гарантии?'],ph:'Задайте вопрос о продукте...',hint:'Демо-режим — загрузите свой каталог',lblQuote:'Запросить КП',noAns:'В каталоге нет такой информации. Оставьте контакт — наш инженер ответит в течение 24 часов.',lfTitle:'📬 Оставьте контакт',fName:'Ваше имя',fEmail:'Email *',fCo:'Компания',fInt:'Что вас интересует?',btnSend:'Отправить',btnCancel:'Отмена',ok:'✅ Спасибо! Мы свяжемся с вами в течение 24 часов.',qfTitle:'📋 Запросить КП',qfSub:'AI сгенерирует персональное предложение',fLang:'Язык КП',fType:'Тип письма',fSender:'Ваша компания и продукт',btnGen:'⚡ Сгенерировать',btnRegen:'⚡ Пересоздать',generating:'Генерирую КП...',btnCopy:'📋 Скопировать',copied:'✅ Скопировано!'}
+};
+
+let lang='en', catalog=DEMO, leads=[], busy=false;
+
+function t(k){return(TR[lang]||TR.en)[k]||(TR.en)[k]||k;}
+
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lb').forEach((b,i)=>b.classList.toggle('active',['en','th','ja','ko','zh','ru'][i]===l));
+  applyLang();
+}
+
+function applyLang(){
+  const ids=['status','lblCat','lblUp','lblUpHint','lblEx','lblLeads','lblLeadsL','wTitle','wText','hintTxt','lblQuote'];
+  const keys=['status','lblCat','lblUp','lblUpHint','lblEx','lblLeads','lblLeadsL','wTitle','wText','hint','lblQuote'];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=t(keys[i]);});
+  const qbs=document.getElementById('qbtns');
+  const qs=t('qs');
+  qbs.querySelectorAll('.qb').forEach((b,i)=>{if(qs[i])b.textContent=qs[i];});
+  document.getElementById('inp').placeholder=t('ph');
+}
+
+async function handlePDF(input){
+  const file=input.files[0]; if(!file) return;
+  document.getElementById('upZone').style.opacity='0.6';
+  const proc=document.createElement('div');proc.className='proc';proc.innerHTML='<div class="spin"></div><span>Reading catalog...</span>';
+  document.getElementById('msgs').appendChild(proc); scroll();
+  try{
+    const ab=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument(ab).promise;
+    let txt='';
+    for(let i=1;i<=Math.min(pdf.numPages,60);i++){
+      const pg=await pdf.getPage(i);
+      const ct=await pg.getTextContent();
+      txt+=ct.items.map(x=>x.str).join(' ')+'\n';
+    }
+    catalog=txt||'PDF loaded but text could not be extracted.';
+    proc.remove();
+    document.getElementById('catInfo').textContent=`${pdf.numPages} pages · ${(file.size/1024).toFixed(0)} KB`;
+    document.getElementById('catLoaded').querySelector('.cat-name').textContent='📄 '+file.name;
+    document.getElementById('statusTxt').textContent='✅ Catalog loaded — AI ready';
+    addBot(`✅ Catalog loaded: **${file.name}** (${pdf.numPages} pages). Ready to answer questions!`);
+  }catch(e){proc.remove();addBot('❌ Error reading PDF. Please try another file.');}
+  document.getElementById('upZone').style.opacity='1';
+}
+
+function hk(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function ar(el){el.style.height='42px';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+function askQ(btn){document.getElementById('inp').value=btn.textContent;send();}
+
+async function send(){
+  const inp=document.getElementById('inp');
+  const text=inp.value.trim();
+  if(!text||busy)return;
+  addUser(text); inp.value=''; inp.style.height='42px';
+  document.getElementById('wlc')?.remove();
+  busy=true; document.getElementById('sbtn').disabled=true;
+  const ty=addTy();
+  try{
+    const r=await fetch('/.netlify/functions/claude',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:600,
+        system:`You are a professional AI sales assistant. Answer questions based ONLY on this product catalog:\n\n${catalog.substring(0,8000)}\n\nRules:\n- Be concise and professional\n- If information is NOT in the catalog, respond exactly: LEAD_CAPTURE\n- Answer in the SAME language the user writes in\n- Format key specs clearly`,
+        messages:[{role:'user',content:text}]
+      })
+    });
+    ty.remove();
+    const d=await r.json();
+    const rep=d.content?.[0]?.text||'';
+    if(rep.includes('LEAD_CAPTURE')){
+      addBot(t('noAns'));
+      showLeadForm();
+    }else{addBot(rep);}
+  }catch(e){ty.remove();addBot('❌ Error. Please try again.');}
+  busy=false; document.getElementById('sbtn').disabled=false;
+}
+
+function addUser(text){
+  const m=document.getElementById('msgs');
+  const d=document.createElement('div');d.className='msg u';
+  d.innerHTML=`<div class="av">👤</div><div class="bub">${esc(text)}</div>`;
+  m.appendChild(d);scroll();
+}
+function addBot(text){
+  const m=document.getElementById('msgs');
+  const d=document.createElement('div');d.className='msg b';
+  const fmt=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  d.innerHTML=`<div class="av">🤖</div><div class="bub">${fmt}</div>`;
+  m.appendChild(d);scroll();
+}
+function addTy(){
+  const m=document.getElementById('msgs');
+  const d=document.createElement('div');d.className='msg b';
+  d.innerHTML=`<div class="av">🤖</div><div class="bub"><div class="ty"><span></span><span></span><span></span></div></div>`;
+  m.appendChild(d);scroll();return d;
+}
+
+function showLeadForm(){
+  const m=document.getElementById('msgs');
+  const d=document.createElement('div');d.className='msg b';d.style.maxWidth='100%';
+  d.innerHTML=`<div class="av">🤖</div><div class="lf">
+    <h4>${t('lfTitle')}</h4>
+    <input id="lN" placeholder="${t('fName')}">
+    <input id="lE" placeholder="${t('fEmail')}">
+    <input id="lC" placeholder="${t('fCo')}">
+    <input id="lI" placeholder="${t('fInt')}">
+    <div class="lfb">
+      <button class="bs" onclick="subLead(this)">${t('btnSend')}</button>
+      <button class="bc" onclick="this.closest('.msg').remove()">${t('btnCancel')}</button>
+    </div>
+  </div>`;
+  m.appendChild(d);scroll();
+}
+
+function subLead(btn){
+  const f=btn.closest('.lf');
+  const email=f.querySelector('#lE').value.trim();
+  if(!email){toast(t('fEmail'));return;}
+  leads.push({name:f.querySelector('#lN').value,email,company:f.querySelector('#lC').value,interest:f.querySelector('#lI').value,time:new Date().toISOString()});
+  document.getElementById('leadsN').textContent=leads.length;
+  btn.closest('.msg').remove();
+  addBot(t('ok'));
+}
+
+function showQuote(){
+  document.getElementById('wlc')?.remove();
+  const m=document.getElementById('msgs');
+  const d=document.createElement('div');d.className='msg b';d.style.maxWidth='100%';
+  d.innerHTML=`<div class="av">🤖</div><div class="qf">
+    <h4>${t('qfTitle')}</h4>
+    <p>${t('qfSub')}</p>
+    <input id="qN" placeholder="${t('fName')} *">
+    <input id="qC" placeholder="${t('fCo')}">
+    <input id="qE" placeholder="${t('fEmail')} *">
+    <select id="qL">
+      <option value="English">🇬🇧 English</option>
+      <option value="Japanese">🇯🇵 Japanese</option>
+      <option value="Thai">🇹🇭 Thai</option>
+      <option value="Korean">🇰🇷 Korean</option>
+      <option value="Chinese">🇨🇳 Chinese</option>
+      <option value="German">🇩🇪 German</option>
+      <option value="Russian">🇷🇺 Russian</option>
+    </select>
+    <textarea id="qI" placeholder="${t('fInt')}"></textarea>
+    <div class="lfb">
+      <button class="bs" id="qBtn" onclick="genQuote(this)">${t('btnGen')}</button>
+      <button class="bc" onclick="this.closest('.msg').remove()">${t('btnCancel')}</button>
+    </div>
+    <div id="qResult"></div>
+  </div>`;
+  m.appendChild(d);scroll();
+}
+
+async function genQuote(btn){
+  const f=btn.closest('.qf');
+  const name=f.querySelector('#qN').value.trim();
+  const email=f.querySelector('#qE').value.trim();
+  if(!name||!email){toast('Please fill name and email');return;}
+  const qlang=f.querySelector('#qL').value;
+  const interest=f.querySelector('#qI').value;
+  btn.disabled=true; btn.textContent=t('generating');
+  const res=f.querySelector('#qResult');
+  res.innerHTML=`<div class="proc"><div class="spin"></div><span>${t('generating')}</span></div>`;
+  try{
+    const r=await fetch('/.netlify/functions/claude',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:800,
+        system:`Write a professional commercial proposal in ${qlang} based on this catalog:\n${catalog.substring(0,6000)}\nBe concise, professional, personal. Include greeting, products, specs, price, delivery, next steps. Sign as Sales Team.`,
+        messages:[{role:'user',content:`Proposal for:\nName: ${name}\nCompany: ${f.querySelector('#qC').value}\nEmail: ${email}\nInterested in: ${interest||'general inquiry'}`}]
+      })
+    });
+    const dat=await r.json();
+    const txt=dat.content?.[0]?.text||'';
+    res.innerHTML=`<div class="kpr">${esc(txt)}</div><button class="btn-cp" onclick="cpQuote(this)">${t('btnCopy')}</button>`;
+  }catch(e){res.innerHTML='<p style="color:var(--m);font-size:11px;padding:6px">❌ Error. Try again.</p>';}
+  btn.disabled=false; btn.textContent=t('btnRegen');
+}
+
+function cpQuote(btn){
+  navigator.clipboard.writeText(btn.previousElementSibling.textContent).then(()=>toast(t('copied')));
+}
+
+function dlLeads(){
+  if(!leads.length){toast('No leads yet');return;}
+  const h=['Name','Email','Company','Interest','Time'];
+  const rows=leads.map(l=>[l.name,l.email,l.company,l.interest,l.time]);
+  const csv=[h,...rows].map(r=>r.map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`leads_${new Date().toISOString().split('T')[0]}.csv`;a.click();
+  toast('✅ Downloaded!');
+}
+
+function scroll(){setTimeout(()=>document.getElementById('msgs').scrollTop=9999,50);}
+function esc(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),3000);}
+
+// Drag and drop
+const uz=document.getElementById('upZone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='var(--a)';});
+uz.addEventListener('dragleave',()=>uz.style.borderColor='');
+uz.addEventListener('drop',e=>{
+  e.preventDefault();uz.style.borderColor='';
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type==='application/pdf'){
+    const dt=new DataTransfer();dt.items.add(file);
+    document.getElementById('fileIn').files=dt.files;
+    handlePDF(document.getElementById('fileIn'));
+  }
+});
+</script>
+</body>
+</html>
