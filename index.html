@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CatalogAI — AI Sales Assistant</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -85,6 +86,12 @@ main{position:relative;z-index:10;display:grid;grid-template-columns:280px 1fr;f
 .ir textarea{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--t);font-family:'DM Sans',sans-serif;resize:none;height:42px;outline:none;transition:border-color 0.2s}
 .ir textarea:focus{border-color:var(--a)}
 .ir textarea::placeholder{color:var(--m)}
+.bmic{background:var(--s2);border:1px solid var(--b);border-radius:9px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;flex-shrink:0}
+.bmic:hover{border-color:var(--a);background:rgba(0,212,170,0.1)}
+.bmic.recording{border-color:#ff4444;background:rgba(255,68,68,0.15);animation:pulse 1s infinite}
+.bmic svg{width:18px;height:18px;fill:var(--m)}
+.bmic.recording svg{fill:#ff4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 .bsnd{width:42px;height:42px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--a),var(--a2));cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s}
 .bsnd:hover{transform:scale(1.05)}
 .bsnd:disabled{opacity:0.4;cursor:not-allowed;transform:none}
@@ -131,7 +138,7 @@ main{position:relative;z-index:10;display:grid;grid-template-columns:280px 1fr;f
     <div>
       <h3 id="lblCat">Product Catalog</h3>
       <div class="upload-zone" id="upZone">
-        <input type="file" accept=".pdf" id="fileIn" onchange="handlePDF(this)">
+        <input type="file" accept=".pdf" multiple id="fileIn" onchange="handlePDF(this)">
         <div class="ui">📄</div>
         <strong id="lblUp">Upload PDF Catalog</strong>
         <p id="lblUpHint">Drag & drop or click</p>
@@ -175,6 +182,9 @@ main{position:relative;z-index:10;display:grid;grid-template-columns:280px 1fr;f
         <button class="bsnd" id="sbtn" onclick="send()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
+        <button class="bmic" id="micBtn" onclick="toggleMic()" title="Voice input">
+          <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+        </button>
       </div>
       <div class="bqrow">
         <button class="btn-quote" onclick="showQuote()">📋 <span id="lblQuote">Request a Quote</span></button>
@@ -216,7 +226,43 @@ const TR={
   ru:{status:'AI-ассистент готов',lblCat:'Каталог продуктов',lblUp:'Загрузить PDF каталог',lblUpHint:'Перетащите или нажмите',lblEx:'Примеры вопросов',lblLeads:'Собранные лиды',lblLeadsL:'контактов',wTitle:'Ваш AI-ассистент по продажам',wText:'Задайте любой вопрос о наших продуктах — характеристики, цены, сравнения',qs:['Какие насосы у вас есть?','Сравните HP-200 и HP-500','Насос для 300 бар?','Ценовой диапазон?','Условия гарантии?'],ph:'Задайте вопрос о продукте...',hint:'Демо-режим — загрузите свой каталог',lblQuote:'Запросить КП',noAns:'В каталоге нет такой информации. Оставьте контакт — наш инженер ответит в течение 24 часов.',lfTitle:'📬 Оставьте контакт',fName:'Ваше имя',fEmail:'Email *',fCo:'Компания',fInt:'Что вас интересует?',btnSend:'Отправить',btnCancel:'Отмена',ok:'✅ Спасибо! Мы свяжемся с вами в течение 24 часов.',qfTitle:'📋 Запросить КП',qfSub:'AI сгенерирует персональное предложение',fLang:'Язык КП',fType:'Тип письма',fSender:'Ваша компания и продукт',btnGen:'⚡ Сгенерировать',btnRegen:'⚡ Пересоздать',generating:'Генерирую КП...',btnCopy:'📋 Скопировать',copied:'✅ Скопировано!'}
 };
 
+// ── SUPABASE CONFIG ── replace with your values ──
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const sbReady = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
+const sb = sbReady ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
 let lang='en', catalog=DEMO, leads=[], busy=false;
+
+// ── load catalogs from Supabase on page open ──
+async function loadCatalogs(){
+  if(!sbReady) return;
+  try{
+    const {data,error}=await sb.from('catalogs').select('name,text').order('created_at');
+    if(error||!data||!data.length) return;
+    let allText=''; let count=0;
+    for(const row of data){ allText+='\n\n=== '+row.name+' ===\n\n'+row.text; count++; }
+    catalog=allText;
+    document.getElementById('catInfo').textContent=count+' catalog(s) from DB';
+    document.getElementById('catLoaded').querySelector('.cat-name').textContent='📄 '+count+' catalog(s)';
+    document.getElementById('statusTxt').textContent='✅ '+count+' catalog(s) loaded';
+    addBot('✅ Loaded **'+count+' saved catalog(s)**. Ready to answer questions!');
+  }catch(e){console.warn('Supabase load:',e);}
+}
+
+// ── save catalog text to Supabase ──
+async function saveCatalogToDB(name, text){
+  if(!sbReady) return;
+  try{ await sb.from('catalogs').upsert({name, text},{onConflict:'name'}); }
+  catch(e){console.warn('Supabase save:',e);}
+}
+
+// ── save lead to Supabase ──
+async function saveLeadToDB(lead){
+  if(!sbReady) return;
+  try{ await sb.from('leads').insert(lead); }
+  catch(e){console.warn('Supabase lead:',e);}
+}
 
 function t(k){return(TR[lang]||TR.en)[k]||(TR.en)[k]||k;}
 
@@ -237,25 +283,32 @@ function applyLang(){
 }
 
 async function handlePDF(input){
-  const file=input.files[0]; if(!file) return;
+  const files=Array.from(input.files); if(!files.length) return;
   document.getElementById('upZone').style.opacity='0.6';
-  const proc=document.createElement('div');proc.className='proc';proc.innerHTML='<div class="spin"></div><span>Reading catalog...</span>';
+  const proc=document.createElement('div');proc.className='proc';
+  proc.innerHTML='<div class="spin"></div><span>Reading '+files.length+' file(s)...</span>';
   document.getElementById('msgs').appendChild(proc); scroll();
   try{
-    const ab=await file.arrayBuffer();
-    const pdf=await pdfjsLib.getDocument(ab).promise;
-    let txt='';
-    for(let i=1;i<=Math.min(pdf.numPages,60);i++){
-      const pg=await pdf.getPage(i);
-      const ct=await pg.getTextContent();
-      txt+=ct.items.map(x=>x.str).join(' ')+'\n';
+    let allText=''; let totalPages=0; let totalSize=0;
+    for(const file of files){
+      const ab=await file.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument(ab).promise;
+      let txt='\n\n=== '+file.name+' ===\n\n';
+      for(let i=1;i<=pdf.numPages;i++){
+        const pg=await pdf.getPage(i);
+        const ct=await pg.getTextContent();
+        txt+=ct.items.map(x=>x.str).join(' ')+'\n';
+      }
+      allText+=txt; totalPages+=pdf.numPages; totalSize+=file.size;
     }
-    catalog=txt||'PDF loaded but text could not be extracted.';
+    catalog=allText||'PDF loaded but text could not be extracted.';
+    // save each catalog to Supabase
+    for(const file of files){ await saveCatalogToDB(file.name, allText); }
     proc.remove();
-    document.getElementById('catInfo').textContent=`${pdf.numPages} pages · ${(file.size/1024).toFixed(0)} KB`;
-    document.getElementById('catLoaded').querySelector('.cat-name').textContent='📄 '+file.name;
-    document.getElementById('statusTxt').textContent='✅ Catalog loaded — AI ready';
-    addBot(`✅ Catalog loaded: **${file.name}** (${pdf.numPages} pages). Ready to answer questions!`);
+    document.getElementById('catInfo').textContent=`${totalPages} pages · ${(totalSize/1024).toFixed(0)} KB · ${files.length} file(s)`;
+    document.getElementById('catLoaded').querySelector('.cat-name').textContent='📄 '+files.length+' catalog(s)';
+    document.getElementById('statusTxt').textContent='✅ '+files.length+' catalog(s) loaded — AI ready';
+    addBot(`✅ Loaded **${files.length} catalog(s)** — ${totalPages} pages total. Ready to answer questions!`);
   }catch(e){proc.remove();addBot('❌ Error reading PDF. Please try another file.');}
   document.getElementById('upZone').style.opacity='1';
 }
@@ -277,7 +330,7 @@ async function send(){
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',max_tokens:600,
-        system:`You are a professional AI sales assistant. Answer questions based ONLY on this product catalog:\n\n${catalog.substring(0,8000)}\n\nRules:\n- Be concise and professional\n- If information is NOT in the catalog, respond exactly: LEAD_CAPTURE\n- Answer in the SAME language the user writes in\n- Format key specs clearly`,
+        system:`You are a professional AI sales assistant. Answer questions based ONLY on this product catalog:\n\n${catalog.substring(0,150000)}\n\nRules:\n- Be concise and professional\n- If information is NOT in the catalog, respond exactly: LEAD_CAPTURE\n- Answer in the SAME language the user writes in\n- Format key specs clearly`,
         messages:[{role:'user',content:text}]
       })
     });
@@ -333,7 +386,9 @@ function subLead(btn){
   const f=btn.closest('.lf');
   const email=f.querySelector('#lE').value.trim();
   if(!email){toast(t('fEmail'));return;}
-  leads.push({name:f.querySelector('#lN').value,email,company:f.querySelector('#lC').value,interest:f.querySelector('#lI').value,time:new Date().toISOString()});
+  const lead={name:f.querySelector('#lN').value,email,company:f.querySelector('#lC').value,interest:f.querySelector('#lI').value,time:new Date().toISOString()};
+  leads.push(lead);
+  saveLeadToDB(lead);
   document.getElementById('leadsN').textContent=leads.length;
   btn.closest('.msg').remove();
   addBot(t('ok'));
@@ -383,7 +438,7 @@ async function genQuote(btn){
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',max_tokens:800,
-        system:`Write a professional commercial proposal in ${qlang} based on this catalog:\n${catalog.substring(0,6000)}\nBe concise, professional, personal. Include greeting, products, specs, price, delivery, next steps. Sign as Sales Team.`,
+        system:`Write a professional commercial proposal in ${qlang} based on this catalog:\n${catalog.substring(0,150000)}\nBe concise, professional, personal. Include greeting, products, specs, price, delivery, next steps. Sign as Sales Team.`,
         messages:[{role:'user',content:`Proposal for:\nName: ${name}\nCompany: ${f.querySelector('#qC').value}\nEmail: ${email}\nInterested in: ${interest||'general inquiry'}`}]
       })
     });
@@ -410,6 +465,38 @@ function dlLeads(){
 function scroll(){setTimeout(()=>document.getElementById('msgs').scrollTop=9999,50);}
 function esc(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),3000);}
+
+// ── VOICE INPUT ──
+let recognition=null, isRecording=false;
+
+function toggleMic(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    toast('Voice not supported in this browser. Use Chrome.');return;
+  }
+  if(isRecording){recognition.stop();return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.continuous=false;
+  recognition.interimResults=true;
+  recognition.lang=''; // auto-detect language
+  const btn=document.getElementById('micBtn');
+  const inp=document.getElementById('inp');
+  recognition.onstart=()=>{isRecording=true;btn.classList.add('recording');toast('🎤 Listening...');};
+  recognition.onresult=(e)=>{
+    let transcript='';
+    for(let i=e.resultIndex;i<e.results.length;i++) transcript+=e.results[i][0].transcript;
+    inp.value=transcript; ar(inp);
+  };
+  recognition.onend=()=>{
+    isRecording=false;btn.classList.remove('recording');
+    if(inp.value.trim()) send();
+  };
+  recognition.onerror=(e)=>{isRecording=false;btn.classList.remove('recording');toast('Mic error: '+e.error);};
+  recognition.start();
+}
+
+// load saved catalogs on start
+loadCatalogs();
 
 // Drag and drop
 const uz=document.getElementById('upZone');
