@@ -227,8 +227,8 @@ const TR={
 };
 
 // ── SUPABASE CONFIG ── replace with your values ──
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://ajsntrotksigztacunmn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_pZSlAnN3w6knUFM93XDXZw_Wf6oDqfq';
 const sbReady = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
 const sb = sbReady ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
@@ -238,10 +238,10 @@ let lang='en', catalog=DEMO, leads=[], busy=false;
 async function loadCatalogs(){
   if(!sbReady) return;
   try{
-    const {data,error}=await sb.from('catalogs').select('name,text').order('created_at');
+    const {data,error}=await sb.from('catalogs').select('name,content').order('created_at');
     if(error||!data||!data.length) return;
     let allText=''; let count=0;
-    for(const row of data){ allText+='\n\n=== '+row.name+' ===\n\n'+row.text; count++; }
+    for(const row of data){ allText+='\n\n=== '+row.name+' ===\n\n'+row.content; count++; }
     catalog=allText;
     document.getElementById('catInfo').textContent=count+' catalog(s) from DB';
     document.getElementById('catLoaded').querySelector('.cat-name').textContent='📄 '+count+' catalog(s)';
@@ -253,14 +253,14 @@ async function loadCatalogs(){
 // ── save catalog text to Supabase ──
 async function saveCatalogToDB(name, text){
   if(!sbReady) return;
-  try{ await sb.from('catalogs').upsert({name, text},{onConflict:'name'}); }
+  try{ await sb.from('catalogs').upsert({name, content:text},{onConflict:'name'}); }
   catch(e){console.warn('Supabase save:',e);}
 }
 
 // ── save lead to Supabase ──
 async function saveLeadToDB(lead){
   if(!sbReady) return;
-  try{ await sb.from('leads').insert(lead); }
+  try{ await sb.from('contacts').insert(lead); }
   catch(e){console.warn('Supabase lead:',e);}
 }
 
@@ -386,7 +386,7 @@ function subLead(btn){
   const f=btn.closest('.lf');
   const email=f.querySelector('#lE').value.trim();
   if(!email){toast(t('fEmail'));return;}
-  const lead={name:f.querySelector('#lN').value,email,company:f.querySelector('#lC').value,interest:f.querySelector('#lI').value,time:new Date().toISOString()};
+  const lead={name:f.querySelector('#lN').value,email,company:f.querySelector('#lC').value,notes:f.querySelector('#lI').value};
   leads.push(lead);
   saveLeadToDB(lead);
   document.getElementById('leadsN').textContent=leads.length;
